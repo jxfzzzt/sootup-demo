@@ -2,7 +2,7 @@ package com.jxfzzzt;
 
 import sootup.callgraph.CallGraph;
 import sootup.callgraph.CallGraphAlgorithm;
-import sootup.callgraph.ClassHierarchyAnalysisAlgorithm;
+import sootup.callgraph.RapidTypeAnalysisAlgorithm;
 import sootup.core.inputlocation.AnalysisInputLocation;
 import sootup.core.signatures.MethodSignature;
 import sootup.core.types.ClassType;
@@ -12,13 +12,11 @@ import sootup.java.bytecode.inputlocation.JavaClassPathAnalysisInputLocation;
 import sootup.java.core.JavaIdentifierFactory;
 import sootup.java.core.JavaProject;
 import sootup.java.core.JavaSootClass;
-import sootup.java.core.JavaSootMethod;
 import sootup.java.core.language.JavaLanguage;
 import sootup.java.core.views.JavaView;
 
 import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 public class Main03 {
 
@@ -28,7 +26,7 @@ public class Main03 {
         JavaLanguage javaLanguage = new JavaLanguage(8);
         return JavaProject.builder(javaLanguage)
                 .addInputLocation(inputLocation)
-                .addInputLocation(new JavaClassPathAnalysisInputLocation(System.getProperty("java.home") + "/lib/rt.jar"))
+//                .addInputLocation(new JavaClassPathAnalysisInputLocation(System.getProperty("java.home") + "/lib/rt.jar")) // 加了这行堆会爆炸
                 .build();
     }
 
@@ -38,21 +36,35 @@ public class Main03 {
 
         ClassType classType = javaProject.getIdentifierFactory().getClassType("example.SootTest");
 
-        JavaSootClass javaSootClass = javaView.getClass(classType).get();
-        List<? extends JavaSootMethod> printFizzBuzz = javaSootClass.getMethods().stream().filter(e -> e.getName().equals("sout")).collect(Collectors.toList());
-        assert printFizzBuzz.size() > 0;
+        MethodSignature entryMethodNode = JavaIdentifierFactory.getInstance().getMethodSignature(classType,
+                JavaIdentifierFactory.getInstance().getMethodSubSignature("printFizzBuzz", VoidType.getInstance(), Collections.singletonList(PrimitiveType.IntType.getInstance()))
+        );
 
-        MethodSignature signature = printFizzBuzz.get(0).getSignature();
-        System.out.println(signature);
+        CallGraphAlgorithm algorithm = new RapidTypeAnalysisAlgorithm(javaView, javaView.getTypeHierarchy());
+        CallGraph callGraph = algorithm.initialize(Collections.singletonList(entryMethodNode));
 
-//        MethodSignature entryMethodNode = JavaIdentifierFactory.getInstance().getMethodSignature(classType,
-//                JavaIdentifierFactory.getInstance().getMethodSubSignature("printFizzBuzz", VoidType.getInstance(), Collections.singletonList(PrimitiveType.IntType.getInstance()))
-//        );
-//
-        CallGraphAlgorithm algorithm = new ClassHierarchyAnalysisAlgorithm(javaView, javaView.getTypeHierarchy());
-        CallGraph callGraph = algorithm.initialize(Collections.singletonList(signature));
-        System.out.println(callGraph);
-        callGraph.callsFrom(signature).forEach(System.out::println);
+        Set<MethodSignature> methodSignatures = callGraph.callsFrom(entryMethodNode);
 
+        System.out.println("printFizzBuzz(int k) 调用了以下方法: ");
+        for (MethodSignature signature1 : methodSignatures) {
+            System.out.println(signature1.getSubSignature());
+        }
+        System.out.println("=================================");
+
+
+        show(callGraph, entryMethodNode, 0);
     }
+
+
+    // 递归打印展示
+    static void show(CallGraph callGraph, MethodSignature signature, Integer depth) {
+        // 打印
+        for(int i = 0 ; i < depth; i ++ ) System.out.print("\t");
+        System.out.println(signature.getSubSignature());
+
+        for (MethodSignature methodSignature : callGraph.callsFrom(signature)) {
+            show(callGraph, methodSignature, depth + 1);
+        }
+    }
+
 }
