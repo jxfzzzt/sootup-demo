@@ -1,5 +1,6 @@
 package com.jxfzzzt;
 
+import lombok.extern.slf4j.Slf4j;
 import sootup.callgraph.CallGraph;
 import sootup.callgraph.CallGraphAlgorithm;
 import sootup.callgraph.RapidTypeAnalysisAlgorithm;
@@ -18,12 +19,15 @@ import sootup.java.core.views.JavaView;
 import java.util.Collections;
 import java.util.Set;
 
+@Slf4j
 public class Main03 {
 
     static JavaProject getJavaProject() {
         String path = "src/main/resources/test-demo/target/classes"; // 一定要到classes文件夹中
         AnalysisInputLocation<JavaSootClass> inputLocation = new JavaClassPathAnalysisInputLocation(path);
+
         JavaLanguage javaLanguage = new JavaLanguage(8);
+
         return JavaProject.builder(javaLanguage)
                 .addInputLocation(inputLocation)
 //                .addInputLocation(new JavaClassPathAnalysisInputLocation(System.getProperty("java.home") + "/lib/rt.jar")) // 加了这行堆会爆炸
@@ -45,9 +49,10 @@ public class Main03 {
 
         Set<MethodSignature> methodSignatures = callGraph.callsFrom(entryMethodNode);
 
+        // 调用简单的方法
         System.out.println("printFizzBuzz(int k) 调用了以下方法: ");
         for (MethodSignature signature1 : methodSignatures) {
-            System.out.println(signature1.getSubSignature());
+            System.out.println(signature1);
         }
         System.out.println("=================================");
 
